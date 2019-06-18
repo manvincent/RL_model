@@ -125,30 +125,6 @@ def fitModel(fmri = True):
     sampleDF.to_csv(f'{initDict.outDir}/group_modelparams.csv', index = False)    
     return 
 
-#        
-#        
-#simResp += 0.01
-#
-#plt.plot(np.arange(numTrials),simResp,color="green");
-#
-#
-#
-#                
-#taskData.respIdx[np.where(taskData.respIdx==1)] = simResp[np.where(simResp==1)]  = np.max(Q)
-#taskData.respIdx[np.where(taskData.respIdx==0)] = simResp[np.where(simResp==0)]  = np.min(Q)
-#
-#plt.scatter(np.arange(numTrials),taskData.respIdx);
-#plt.plot(Q[0],alpha=0.9);
-#plt.plot(Q[1],alpha=0.9);
-#plt.bar(np.arange(numTrials),taskData.payOut, color="red",alpha=0.2)
-#plt.plot(RPE, color="green")
-##plt.plot(unchosenQ,linewidth=2)
-#for r in np.arange(len(np.where(taskData.reverseTrial)[0])):
-#    plt.axvline(np.where(taskData.reverseTrial)[0][r], color='red',linewidth=3)
-#        
-#        
-#
-
 def unpackTask(genTask):
     # Get choice attributes
     highChosen = np.hstack([genTask.sessionInfo[i].highChosen for i in np.arange(genTask.numSessions)])
