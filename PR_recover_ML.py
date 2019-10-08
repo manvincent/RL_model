@@ -19,7 +19,7 @@ np.seterr(over='warn')
 np.set_printoptions(threshold=sys.maxsize)
 import pickle
 import os
-os.chdir('/home/vman/Dropbox/PostDoctoral/Projects/med_lat_OFC/analysis/modelling')
+os.chdir("C:\\Users\\Brenden\\OneDrive - California Institute of Technology\\PhD\\O'Doherty Lab\\RL_model")
 from optimizer import *
 from utilities import *
 
@@ -27,7 +27,7 @@ from utilities import *
 ### Recovery script
 def initRecover(numTrials):
     modelName = 'base_delta'
-    homeDir = '/home/vman/Dropbox/PostDoctoral/Projects/med_lat_OFC/analysis/modelling/param_recov'
+    homeDir = "C:\\Users\\Brenden\\OneDrive - California Institute of Technology\\PhD\\O'Doherty Lab\\RL_model\\param_recov"
     datDir =  homeDir + os.sep + 'Generate' + os.sep + 'Trial_'+str(numTrials)
     outDir = homeDir + os.sep + 'Recover'
     if not os.path.exists(outDir):

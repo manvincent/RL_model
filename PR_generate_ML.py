@@ -3,7 +3,7 @@
 
 import numpy as np
 import os
-os.chdir('/home/vman/Dropbox/PostDoctoral/Projects/med_lat_OFC/analysis/modelling')
+os.chdir("C:\\Users\\Brenden\\OneDrive - California Institute of Technology\\PhD\\O'Doherty Lab\\RL_model")
 import itertools
 from defineModel import *
 from utilities import *
@@ -13,7 +13,7 @@ from utilities import *
 def initGenerate(numTrials):
     ###### Global task properties ######
     # Defining directories #
-    homeDir = '/home/vman/Dropbox/PostDoctoral/Projects/med_lat_OFC/analysis/modelling/param_recov'
+    homeDir = "C:\\Users\\Brenden\\OneDrive - California Institute of Technology\\PhD\\O'Doherty Lab\\RL_model\\param_recov"
     if not os.path.exists(homeDir): 
         os.mkdir(homeDir)
     outDir =  homeDir + os.sep + 'Generate' + os.sep + 'Trial_'+str(numTrials)
