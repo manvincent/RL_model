@@ -60,14 +60,19 @@ def genData(numTrials):
             # Initialize the reverseStatus to False (need participant to get 4 continuous correct)
             reverseStatus = False
             for tI in range(initDict.trialInfo.trialsPerSess):
-                # Initialize trials
-                initTrial(tI, initDict, sessionInfo)
+                # Initialize sessions
+                initSessions(expInfo,tI, sessionInfo)
                 # Run model simulation (make choice)
                 [respIdx, _] = initMod.actor(qval, smB)
                 initDict.sessionInfo[0].sessionResponses.respKey[tI] = respIdx
                 initDict.sessionInfo[0].Qvalue[:,tI] = qval
                 # Compute outcome 
-                reward = computeOutcome(tI, initDict, sessionInfo, respIdx) 
+                reward = computeOutcome(tI, 
+                    initDict.numSessTrials, 
+                    initDict.pWinHgih,
+                    initDict.pWinMed[sessionInfo.sessIsVol],
+                    taskInfo.pWinLow,
+                    vol=sessionInfo.sessIsVol)
                 # Update action value according to the learning rule
                 if (~np.isnan(reward)):
                     [qval[respIdx],_] = initMod.learner(qval[respIdx], qA, reward)
