@@ -57,8 +57,6 @@ def genData(numTrials):
         # Loop through sessions and t rials
         for sI in np.arange(initDict.numSessions):
             sessionInfo = initDict.sessionInfo[sI]
-            # Initialize the reverseStatus to False (need participant to get 4 continuous correct)
-            reverseStatus = False
             for tI in range(initDict.trialInfo.trialsPerSess):
                 # Initialize sessions
                 initSessions(expInfo,tI, sessionInfo)
@@ -76,8 +74,6 @@ def genData(numTrials):
                 # Update action value according to the learning rule
                 if (~np.isnan(reward)):
                     [qval[respIdx],_] = initMod.learner(qval[respIdx], qA, reward)
-                # Compute reversal 
-                reverseStatus = computeReversal(tI, initDict, sessionInfo, reverseStatus)
         # Store simulations
         modelStruct = dict2class(dict(genParams = genParams))
         # Convert data
