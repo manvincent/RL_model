@@ -59,12 +59,14 @@ class Optimizer(object):
 
     def likelihood(self, param, taskData, numTrials):
         # Initialize Q values
-        qval = np.zeros(2, dtype = float)
+        qval = np.ones(2, dtype = float) * np.mean(np.array([0,0.1,0.2,0.3]))
         # Unpack parameter values
         qA, smB = param
         # Initilize trial likelihood
         pChoice = 0
         for tI in np.arange(numTrials):
+            if taskData.runReset[tI] == 1: 
+                qval = np.ones(2, dtype = float) * np.mean(np.array([0,0.1,0.2,0.3]))
             if ~np.isnan(taskData.respIdx[tI]):
                 # Run model simulation
                 [_, pOptions] = self.initMod.actor(qval, smB)

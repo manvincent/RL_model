@@ -18,18 +18,32 @@ class ModelType(object):
         # Define parameter lower and upper bounds
         self.alpha_bounds = (0.01, 0.99)
         self.beta_bounds = (1, 20)
+        self.alpha_a = self.alpha_b = 1.4
+        self.beta_shape = 4.83
+        self.beta_scale = 0.73
         return
+
+    def genPriors(self, arr):
+        # Distributions
+        alpha_genDistr = beta(self.alpha_a, self.alpha_b)
+        beta_genDistr = gamma(self.beta_shape, self.beta_scale)
+        # Ranges
+        alpha_range = alpha_genDistr.cdf(self.alpha_bounds)
+        beta_range = beta_genDistr.cdf(self.beta_bounds)
+        alpha_genVal = alpha_genDistr.ppf(np.linspace(*alpha_range, num=arr))
+        beta_genVal = beta_genDistr.ppf(np.linspace(*beta_range, num=arr))
+        # Prior distribution for learning rate
+        #alpha_genDistr = np.round(np.random.beta(self.alpha_a, self.alpha_b, arr),3)
+        # Prior distribution of softmax beta
+        #beta_genDistr = np.round(np.random.gamma(self.beta_shape, self.beta_scale, arr),3)
+        return alpha_genVal, beta_genVal
 
     def paramPriors(self):
         # Prior distribution for learning rate
-        alpha_a = 1.2
-        alpha_b = 1.2
-        alpha_logpdf = lambda x: np.sum(np.log(beta.pdf(x,alpha_a,alpha_b)))
+        alpha_logpdf = lambda x: np.sum(np.log(beta.pdf(x, self.alpha_a, self.alpha_b)))
         alpha_logpdf.__name__ = "qA_logpdf"
         # Prior distribution of softmax beta
-        beta_shape = 4.83
-        beta_scale = 0.73
-        beta_logpdf = lambda x: np.sum(np.log(gamma.pdf(x,beta_shape,loc=0,scale=beta_scale)))
+        beta_logpdf = lambda x: np.sum(np.log(gamma.pdf(x, self.beta_shape, loc=0, scale=self.beta_scale)))
         beta_logpdf.__name__ = "smB_logpdf"
         return alpha_logpdf, beta_logpdf
 
