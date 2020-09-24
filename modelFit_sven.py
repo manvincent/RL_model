@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jun  7 09:56:26 2019
+Created on Wed Sep 23 17:28:14 2020
 
 @author: vman
 """
+
+
 
 ## Make sure to activate the Intel Python distribution
 ## (bash): source activate IDP
@@ -28,7 +30,7 @@ from utilities import *
 def initRecover():
     modelName = 'rl'
     homeDir = '/home/vman/Dropbox/PostDoctoral/Projects/rew_mod/analysis'
-    datDir =  f'{homeDir}/data_6day'
+    datDir =  f'{homeDir}/data_sven'
     outDir = f'{homeDir}/modelling/{modelName}/model_results'
     if not os.path.exists(outDir):
         os.makedirs(outDir)
@@ -43,20 +45,19 @@ def initRecover():
 def fitModel():
     # Specify experiment info
     #subList = np.array([2,3,4,5])
-    subList = np.array([3])
-    #numDays = np.array([6,4,3,1])
-    numDays = np.array([6])
-    modality = 'fmri' # can be behav (for pilot 2) or fmri 
+    subList = np.array([10,20])
+    sessID = np.array([[12,13,16,18,19,31],
+                      [21,22,25,26,27,28]])
     # Initialize the model fitting object
     initDict = initRecover()
     # Create structures for storing estimates across subjects
     sampleDF = pd.DataFrame()
     for subIdx, subID in enumerate(subList):
         # Load in data
-        inFile = f'sub{subID}_data.csv'
-        subDF = pd.read_csv(f'{initDict.datDir}/{modality}/{inFile}')
-        for day in np.arange(numDays[subIdx])+1:
-            dayDF = subDF[subDF.dayID == day]
+        inFile = f'subs{subID}_behav.csv'
+        subDF = pd.read_csv(f'{initDict.datDir}/{inFile}')
+        for day in sessID[subIdx]:
+            dayDF = subDF[subDF.sessID == day]
             # Unpack the task sessions
             taskData = unpackTask(dayDF)
             numTrials = taskData.numTrials                
@@ -99,7 +100,7 @@ def fitModel():
                     chosenQ[tI] = qval[int(respIdx)]
                     unchosenQ[tI] = qval[int(unchosenIdx)]
                     # Retrieve observed reward
-                    reward = taskData.payOut[tI]
+                    reward = taskData.reward[tI]
                     # Update learner
                     [qval[int(respIdx)], RPE[tI]] = ModelType().learner(qval[int(respIdx)], fitParams.alpha_i, reward)
                 else:
@@ -123,21 +124,15 @@ def fitModel():
 def unpackTask(taskDF):
     # Get choice attributes
     highChosen = np.array(taskDF.highChosen, dtype=bool)
-    selectedStim = np.array(taskDF.response_stimID)
+    selectedStim = np.array(taskDF.choice)
     respIdx = selectedStim - 1
     
     # Get reversal attributes
-    reverseStatus = np.array(taskDF.reverseStatus, dtype=bool)
     reverseTrial = np.array(taskDF.reverseTrial, dtype=bool)
     
     # Get stimulus attributes
-    pWin = np.array([taskDF.stim1_pWin, taskDF.stim2_pWin])
-    isHigh = np.array([taskDF.stim1_High, taskDF.stim2_High], dtype=bool)
-    isSelected = np.array([taskDF.selected_stim1, taskDF.selected_stim2])
-    isWin = np.array([taskDF.stim1_isWin, taskDF.stim2_isWin])
-    
-    # Get outcome attributes
-    outMag = minmax(np.array(taskDF.outMag))
+    pWin = taskDF.Preward
+    reward = taskDF.reward
     
     # Get session and trial lists
     sessID = np.array(taskDF.sessNo)
@@ -149,18 +144,13 @@ def unpackTask(taskDF):
     runReset = np.zeros(numTrials)
     runReset[np.where(trialNo == 1)] = 1
     
-    
     return dict2class(dict(runReset = runReset,
                            highChosen = highChosen,
                            selectedStim = selectedStim,
                            respIdx = respIdx,
-                           reverseStatus = reverseStatus,
                            reverseTrial = reverseTrial,
                            pWin = pWin,
-                           isHigh = isHigh,
-                           isSelected = isSelected,
-                           isWin = isWin,
-                           payOut = outMag, 
+                           reward = reward, 
                            sessID = sessID, 
                            trialNo = trialNo,
                            numTrials = numTrials,
