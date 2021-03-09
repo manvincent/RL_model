@@ -10,37 +10,39 @@ import numpy as np
 import pandas as pd
 
 # Ensure that relative paths start from the same directory as this script
-homeDir = 'path/to/folder'
+homeDir = 'path/to/project''
 analysisDir = homeDir + 'analysis/'
-taskDir = homeDir + 'fmri_v1/rew_mod_fmri_v02/fmri/'
-datDir = analysisDir + 'data/fmri/'
+if not os.path.exists(analysisDir + 'data'):
+    os.mkdir(analysisDir + 'data')
+taskDir = homeDir + 'rev_py_v01/'
+datDir = taskDir + 'Output/'
 
 # Import custom modules
 os.chdir(taskDir)
 from config import *
-import pumps
+
 # Specify experiment info
-subList = np.array([2,3,4,5])
-numSess = 5
-numDays = np.array([6,6,3,1])
+numSubs = 23
+subList = np.arange(numSubs)+1
+numSess = 1
 
 def parseData(subList, numSess):
     group_DF = []
     # Iterate through subjects
-    for subIdx, subID in enumerate(subList):
-        # Create dataframe
-        subDF = pd.DataFrame()
-        onset_subDF = pd.DataFrame()
-        # Delinate data according to how many days tested
-        for dayIdx, dayID in enumerate(np.arange(numDays[subIdx])+1):
-            dayDF = pd.DataFrame()
-            onset_dayDF = pd.DataFrame()
+    for subID in subList:
+        # Check if subject data exists
+        if os.path.exists(datDir + 'sub' + str(subID) + '_sess1_data.pkl'):
+            # Create dataframe
+            subDF = pd.DataFrame()
             # Iterate through sessions
             for sessIdx, sessID in enumerate(np.arange(numSess)+1):
                 # Load in subject data
-                subDat = load_obj(datDir + 'sub' + str(subID) + '_day' + str(dayID) + '_sess' + str(sessID) + '_data.pkl')
+                subDat = load_obj(datDir + 'sub' + str(subID) + '_sess' + str(sessID) + '_data.pkl')
                 # Load up session data
                 sessDat = subDat.sessionInfo[sessIdx]
+                # Interpolate missing data if applicable
+                if not hasattr(sessDat, 'stimAttrib'):
+                    interpDesign(sessDat, subDat.trialInfo.trialsPerSess, subDat.pWinHigh, subDat.pWinLow)
                 # Create session dataframe
                 sessDF = pd.DataFrame(columns=['sessNo',
                                                'trialNo',
@@ -68,7 +70,6 @@ def parseData(subList, numSess):
                                                'stim1_isWin',
                                                'stim2_isWin',
                                                'isWin',
-                                               'outMag',
                                                'payOut',
                                                'accum_payOut',
                                                'abs_outMag'])
@@ -97,57 +98,81 @@ def parseData(subList, numSess):
                 sessDF.stim1_isWin = sessDat.stimAttrib.isWin[0,:]
                 sessDF.stim2_isWin = sessDat.stimAttrib.isWin[1,:]
                 sessDF.isWin = [1 if (sessDat.stimAttrib.isWin[0,tI] == 1) or (sessDat.stimAttrib.isWin[1,tI] == 1) else (0 if (sessDat.stimAttrib.isWin[0,tI] == 0) or (sessDat.stimAttrib.isWin[1,tI] == 0) else np.nan) for tI in np.arange(subDat.trialInfo.trialsPerSess)]
-                outMag= np.empty([subDat.trialInfo.trialsPerSess], dtype=float)
-                for tI in np.arange(subDat.trialInfo.trialsPerSess):
-                    if sessDat.stimAttrib.isSelected[0,tI] == 1:
-                        outMag[tI] = sessDat.stimAttrib.outMag[0,tI] if sessDat.stimAttrib.isWin[0,tI] == 1 else 0
-                    elif sessDat.stimAttrib.isSelected[1,tI] == 1:
-                        outMag[tI] = sessDat.stimAttrib.outMag[1,tI] if sessDat.stimAttrib.isWin[1,tI] == 1 else 0
-                    else:
-                        outMag[tI] = np.nan
-                sessDF.outMag = outMag
                 sessDF.payOut = sessDat.payOut
                 sessDF.payOut[sessDF.payOut==0] = np.nan
                 sessDF.accum_payOut = pd.Series.cumsum(sessDF.payOut)
                 sessDF.abs_outMag = np.abs(sessDF.payOut)
+                # Session and trial number
+                sessDF.sessNo = sessID
+                sessDF.trialNo = np.arange(len(sessDat.sessionOnsets.tPreFix))+1
                 sessDF.blockTrialNo, sessDF.block =  blockCounter(sessDF.reverseTrial) # Trial number before reversal
                 sessDF.trialClass, sessDF.blockBin = trialClassifier(sessDF.blockTrialNo,
                                                                      sessDF.block,
                                                                      thres = 0.5,
                                                                      binWidth = 5) # Classify within-block trials as 'early' vs 'late'
+
+                # Concatenate session DF (if multiple sessions)
+                subDF = pd.concat([subDF,sessDF],axis=0)
                 # Onsets
-                onsetDF = pd.DataFrame(columns=['sessNo','trialNo','tPreFix','tStim','tResp','tOut','tDeliv','tPostFix'])
+                onsetDF = pd.DataFrame(columns=['tPreFix','tStim','tResp','tOut','tPostFix'])
                 onsetDF.tPreFix = sessDat.sessionOnsets.tPreFix
                 onsetDF.tStim = sessDat.sessionOnsets.tStim
                 onsetDF.tResp = sessDat.sessionOnsets.tResp
                 onsetDF.tOut= sessDat.sessionOnsets.tOut
-                onsetDF.tDeliv = sessDat.sessionOnsets.tDeliv
                 onsetDF.tPostFix = sessDat.sessionOnsets.tPostFix
-                # Add session and trial #s
-                sessDF.sessNo = onsetDF.sessNo = sessID
-                sessDF.trialNo = onsetDF.trialNo = np.arange(len(sessDat.sessionOnsets.tPreFix))+1
-                # Append to day dataframe
-                dayDF = pd.concat([dayDF, sessDF], axis=0)
-                onset_dayDF = pd.concat([onset_dayDF, onsetDF])
+                # Output onset DF
+                onsetDF.to_csv(analysisDir + 'data' + os.sep + 'sub' + str(subID) + '_onsets.csv', na_rep=np.nan, index=False)
+                # Append to group dataframe
+                group_DF.append(subDF)
 
-            dayDF['dayID'] = onset_dayDF['dayID'] = dayID
-            dayDF['instructCond'] = subDat.instructCond if hasattr(subDat,'instructCond') else np.nan
-            # Concatenate session DF (if multiple sessions)
-            subDF = pd.concat([subDF,dayDF],axis=0)
-            onset_subDF = pd.concat([onset_subDF, onset_dayDF], axis=0)
+            # Output subject data
+            subDF['instructCond'] = subDat.instructCond if hasattr(subDat,'instructCond') else 'hm'
+            subDF['subID'] = subID
+            subDF.to_csv(analysisDir + 'data' + os.sep + 'sub' + str(subID) + '_data.csv', na_rep=np.nan, index=False)
 
-        # Output subject data
-        subDF['subID'] = onset_subDF['subID'] = subID
-        subDF.to_csv(datDir + os.sep + 'sub' + str(subID) + '_data.csv', na_rep=np.nan, index=False)
-        # Output onset DF
-        onset_subDF.to_csv(datDir + os.sep + 'sub' + str(subID) + '_onsets.csv', na_rep=np.nan, index=False)
-        # Append to group dataframe
-        group_DF.append(subDF)
-
-    # Create group dataframe
-    groupDF = pd.concat(group_DF,axis=0)
+        # Create group dataframe
+        groupDF = pd.concat(group_DF,axis=0)
     # Output group data
-    groupDF.to_csv(datDir + 'group_data.csv', na_rep=np.nan, index=False)
+    groupDF.to_csv(analysisDir + 'data' + os.sep + 'group_data.csv', na_rep=np.nan, index=False)
+    return
+
+# Function to interpolate data for subjects with missing data
+# input data is sessData
+def interpDesign(data, trialsPerSess, pWinHigh, pWinLow):
+    isSelected = np.empty((2,trialsPerSess),dtype=float)
+    isHigh = np.empty((2,trialsPerSess),dtype=bool)
+    pWin = np.empty((2,trialsPerSess),dtype=float)
+    isWin = np.empty((2,trialsPerSess),dtype=float)
+    for tI in np.arange(trialsPerSess):
+        if (data.stim1_left[tI]):
+            respStimIdx = 0 if (data.sessionResponses.respKey[tI] == 1) else 1
+        elif (not data.stim1_left[tI]):
+            respStimIdx = 1 if (data.sessionResponses.respKey[tI] == 1) else 0
+        # isSelected field
+        isSelected[respStimIdx,tI] = 1
+        isSelected[1-respStimIdx,tI] = 0
+        isSelected[:,tI] = np.nan if (np.isnan(data.sessionResponses.respKey[tI])) else isSelected[:,tI]
+        # isHigh field
+        if (data.highChosen[tI]):
+            isHigh[respStimIdx,tI] = True
+            isHigh[1-respStimIdx,tI] = False
+        else:
+            isHigh[respStimIdx,tI] = False
+            isHigh[1-respStimIdx,tI] = True
+        # pWin field
+        pWin[0,tI] = pWinHigh if (isHigh[0,tI]) else pWinLow
+        pWin[1,tI] = pWinHigh if (isHigh[1,tI]) else pWinLow
+        # isWin field
+        isWin[1-respStimIdx,tI] = np.nan
+        isWin[respStimIdx,tI] = 1 if (np.sign(data.payOut[tI]) > 0) else 0
+        isWin[:,tI] = np.nan if (np.isnan(data.sessionResponses.respKey[tI])) else isWin[:,tI]
+    # Wrap into 'stimAttrib' class object
+    stimAttrib = dict2class(dict(pWin=pWin,
+                                 isHigh=isHigh,
+                                 isSelected=isSelected,
+                                 isWin=isWin))
+    # Update data object with this previously missing object (stimAttrib)
+    data.__dict__.update({'stimAttrib':stimAttrib})
     return
 
 # Compute the within-block (pre-reversal trial indices)
